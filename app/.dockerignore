@@ -1,0 +1,21 @@
+node_modules/
+npm-debug.log
+yarn-debug.log
+
+# Env/Secrets
+.env
+
+# Build output
+dist/
+build/
+
+# Git & CI
+.git
+.gitignore
+.github/
+
+# OS/Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

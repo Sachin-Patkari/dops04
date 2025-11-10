@@ -1,0 +1,45 @@
+services:
+  frontend:
+    build:
+      context: ../app/frontend
+      dockerfile: Dockerfile
+      args:
+        - REACT_APP_API_URL=http://backend:5000
+    image: sachinpatkari/project-frontend:latest
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ../app/backend
+      dockerfile: Dockerfile
+    image: sachinpatkari/project-backend:latest
+    ports:
+      - "5001:5000"
+    environment:
+      MONGO_URI: mongodb://root:root@mongo:27017/admin?authSource=admin
+      SERVER_URL: http://localhost:8080
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:4.4
+    container_name: mongo
+    restart: always
+    command: --bind_ip_all
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: root
+    ports:
+      - "27017:27017"
+
+  node-exporter:
+    image: prom/node-exporter
+    ports:
+      - "9100:9100"
+
+networks:
+  default:
+    name: docker_default

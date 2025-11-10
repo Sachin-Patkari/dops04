@@ -1,0 +1,68 @@
+# ---- Node / npm ----
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+package-lock.json
+
+# ---- Environment / Secrets ----
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.crt
+
+# ---- Docker ----
+*.pid
+docker-compose.override.yml
+docker-compose*.log
+.docker/
+docker-data/
+
+# ---- Build / Dist ----
+dist/
+build/
+coverage/
+*.tar
+*.tgz
+
+# ---- Logs ----
+*.log
+logs/
+*.out
+*.err
+debug.log
+
+# ---- System Files ----
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# ---- IDE Files ----
+.vscode/
+.idea/
+*.iml
+
+# ---- Python (if any scripts) ----
+__pycache__/
+*.pyc
+*.pyo
+
+# ---- Terraform / IaC ----
+# State files
+*.tfstate
+*.tfstate.*
+terraform.tfstate.backup
+terraform.tfvars
+.terraform/
+.terraform.lock.hcl
+
+# ---- CI/CD ----
+# GitHub Actions runner files
+.github/*-cache/
+.github/*-temp/
+
+# ---- Shell scripts cache ----
+*.sh~

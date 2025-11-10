@@ -1,0 +1,40 @@
+# ---- Node modules ----
+node_modules/
+
+# ---- Git ----
+.git
+.gitignore
+
+# ---- Logs ----
+*.log
+logs/
+
+# ---- Env/Secrets ----
+.env
+*.pem
+*.key
+*.crt
+
+# ---- Build output ----
+dist/
+build/
+coverage/
+
+# ---- OS Files ----
+.DS_Store
+Thumbs.db
+
+# ---- Editor ----
+.vscode/
+.idea/
+
+# ---- Terraform & CI ----
+.terraform/
+*.tfstate
+*.tfvars
+.github/
+.github/workflows/
+
+# ---- Docker ----
+.docker/
+docker-compose*.yml
