@@ -62,11 +62,11 @@ jobs:
             | sudo sh -s -- -b /usr/local/bin
 
       - name: Scan Backend
-        run: trivy image \
+        run: trivy image --severity CRITICAL,HIGH \
           ${{ steps.aws.outputs.ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/${{ env.BACKEND_REPO }}:latest
 
       - name: Scan Frontend
-        run: trivy image \
+        run: trivy image --severity CRITICAL,HIGH \
           ${{ steps.aws.outputs.ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/${{ env.FRONTEND_REPO }}:latest
 
       # PUSH IMAGES
