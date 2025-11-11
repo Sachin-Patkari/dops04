@@ -1,7 +1,7 @@
 export const products = [
   {
     id: 'oc-tee-wht',
-    name: 'Organic Cotton Tee',
+    name: 'Organic Cotton Teee',
     category: 'Tops',
     price: 29.99,
     imageUrl: 'https://placehold.co/600x800/f0f0f0/333333?text=Organic+Tee',
