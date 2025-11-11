@@ -19,14 +19,16 @@ jobs:
       contents: read
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
+      - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-region: ${{ env.AWS_REGION }}
-          # For OIDC IAM Role → no need to store access keys
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: github-actions
+          aws-region: ap-south-1
+          audience: sts.amazonaws.com
 
       - name: Get AWS Account ID
         id: aws
@@ -38,39 +40,42 @@ jobs:
             | docker login --username AWS --password-stdin \
               ${{ steps.aws.outputs.ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com
 
-      # BUILD IMAGES
+      # BUILD BACKEND
       - name: Build Backend Image
         run: |
-          docker build -t ${{ steps.aws.outputs.ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/${{ env.BACKEND_REPO }}:latest \
-            $BACKEND_DIR
+          docker build -t \
+          ${{ steps.aws.outputs.ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/${{ env.BACKEND_REPO }}:latest \
+          $BACKEND_DIR
 
+      # BUILD FRONTEND
       - name: Build Frontend Image
         run: |
-          docker build -t ${{ steps.aws.outputs.ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/${{ env.FRONTEND_REPO }}:latest \
-            $FRONTEND_DIR
+          docker build -t \
+          ${{ steps.aws.outputs.ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/${{ env.FRONTEND_REPO }}:latest \
+          $FRONTEND_DIR
 
-      # SECURITY SCAN
+      # INSTALL TRIVY
       - name: Install Trivy
         run: |
           sudo apt-get update && sudo apt-get install -y wget
           wget -qO- https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
             | sudo sh -s -- -b /usr/local/bin
 
-      - name: Scan Backend image
-        run: trivy image --severity CRITICAL,HIGH \
+      - name: Scan Backend
+        run: trivy image \
           ${{ steps.aws.outputs.ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/${{ env.BACKEND_REPO }}:latest
 
-      - name: Scan Frontend image
-        run: trivy image --severity CRITICAL,HIGH \
+      - name: Scan Frontend
+        run: trivy image \
           ${{ steps.aws.outputs.ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/${{ env.FRONTEND_REPO }}:latest
 
-      # PUSH TO ECR
-      - name: Push images to ECR
+      # PUSH IMAGES
+      - name: Push Images
         run: |
           docker push ${{ steps.aws.outputs.ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/${{ env.FRONTEND_REPO }}:latest
           docker push ${{ steps.aws.outputs.ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/${{ env.BACKEND_REPO }}:latest
 
-      # DEPLOY USING SSM (NO SSH)
+      # DEPLOY TO EC2 VIA SSM
       - name: Get EC2 Instance ID
         id: ec2
         run: |
@@ -87,8 +92,5 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --instance-ids ${{ steps.ec2.outputs.INSTANCE_ID }} \
             --comment "Deploy StyleVault App" \
-            --parameters commands='[
-              "cd /opt/app",
-              "docker compose -f docker-compose.prod.yml pull",
-              "docker compose -f docker-compose.prod.yml up -d"
-            ]'
+            --parameters '{"commands":["cd /opt/app","docker compose -f docker-compose.prod.yml pull","docker compose -f docker-compose.prod.yml up -d"]}' \
+            --output text
