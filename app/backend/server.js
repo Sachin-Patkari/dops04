@@ -7,25 +7,13 @@ import orderRoutes from './routes/orderRoutes.js';
 dotenv.config();
 
 const app = express();
-const allowedOrigins = [
-  'http://localhost:8080',
-  'http://localhost:3000',
-  'http://localhost:5001'
-];
 
+// ✅ ALLOW ALL ORIGINS (Frontend on EC2 + localhost dev)
 app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  }
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"],
 }));
-
-
-app.options('*', cors()); // enable preflight for all routes
-
 
 app.use(express.json());
 
