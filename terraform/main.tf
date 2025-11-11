@@ -136,36 +136,38 @@ resource "aws_instance" "app" {
     Name = local.name_prefix
   }
 
-  user_data = <<EOF
+  user_data = <<-EOF
 #!/bin/bash
 set -e
 
-# Install Docker & Compose v2
 apt-get update -y
-apt-get install -y ca-certificates curl gnupg lsb-release awscli
-apt-get install -y docker.io
+apt-get install -y ca-certificates curl gnupg lsb-release awscli docker.io
 systemctl enable docker
 systemctl start docker
 
-# Login to ECR using instance role
-ACCOUNT_ID=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep accountId | awk -F\" '{print $$4}')
+curl -SL https://github.com/docker/compose/releases/download/v2.29.2/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
+chmod +x /usr/local/bin/docker-compose
+ln -sf /usr/local/bin/docker-compose /usr/bin/docker-compose
+
+ACCOUNT_ID=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep accountId | awk -F'"' '{print $4}')
 AWS_REGION="${var.aws_region}"
 
-aws ecr get-login-password --region $${AWS_REGION} | docker login --username AWS --password-stdin $${ACCOUNT_ID}.dkr.ecr.$${AWS_REGION}.amazonaws.com
+aws ecr get-login-password --region $AWS_REGION \
+    | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
 mkdir -p /opt/app
 
-cat >/opt/app/docker-compose.prod.yml <<'YAML'
+cat >/opt/app/docker-compose.prod.yml <<EOT
 services:
   frontend:
-    image: $${ACCOUNT_ID}.dkr.ecr.$${AWS_REGION}.amazonaws.com/stylevault-frontend:latest
+    image: $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/stylevault-frontend:latest
     ports:
       - "80:80"
     depends_on:
       - backend
 
   backend:
-    image: $${ACCOUNT_ID}.dkr.ecr.$${AWS_REGION}.amazonaws.com/stylevault-backend:latest
+    image: $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/stylevault-backend:latest
     environment:
       MONGO_URI: mongodb://mongo:27017/admin
     depends_on:
@@ -179,11 +181,11 @@ services:
 
 volumes:
   mongo-data:
-YAML
-
+EOT
 
 cd /opt/app
-docker compose -f docker-compose.prod.yml pull || true
-docker compose -f docker-compose.prod.yml up -d
+docker-compose -f docker-compose.prod.yml pull || true
+docker-compose -f docker-compose.prod.yml up -d
 EOF
+
 }
