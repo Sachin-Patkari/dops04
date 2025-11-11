@@ -61,12 +61,15 @@ jobs:
           wget -qO- https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
             | sudo sh -s -- -b /usr/local/bin
 
+      # ✅ FIXED TRIVY SCAN
       - name: Scan Backend
-        run: trivy image --severity CRITICAL,HIGH \
+        run: |
+          trivy image --severity CRITICAL,HIGH \
           ${{ steps.aws.outputs.ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/${{ env.BACKEND_REPO }}:latest
 
       - name: Scan Frontend
-        run: trivy image --severity CRITICAL,HIGH \
+        run: |
+          trivy image --severity CRITICAL,HIGH \
           ${{ steps.aws.outputs.ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/${{ env.FRONTEND_REPO }}:latest
 
       # PUSH IMAGES
