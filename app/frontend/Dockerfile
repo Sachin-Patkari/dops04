@@ -1,13 +1,14 @@
 FROM node:18-alpine AS build
 WORKDIR /app
 
+# Accept env variable from GitHub Actions
+ARG REACT_APP_API_URL
+ENV REACT_APP_API_URL=$REACT_APP_API_URL
+
 COPY package*.json ./
 RUN npm install
 
-# ✅ Copy env correctly
-COPY .env.production.local .env.production.local
-
-# ✅ Copy rest
+# Copy the rest
 COPY . .
 
 RUN npm run build
