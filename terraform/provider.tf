@@ -1,16 +1,17 @@
 terraform {
+  required_version = ">= 1.5.0"
   required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 5.0"
+    }
+    random = {
+      source  = "hashicorp/random"
       version = ">= 3.0"
     }
   }
-  required_version = ">= 1.0.0"
 }
 
-provider "azurerm" {
-  features {}
-
-  # explicit subscription to avoid "could not determine subscription" errors
-  subscription_id = "63671924-dfab-4bf3-8e02-69bcf92be433"
+provider "aws" {
+  region = var.aws_region
 }

@@ -4,65 +4,91 @@ on:
   push:
     branches: [ main ]
 
+env:
+  AWS_REGION: ap-south-1
+  FRONTEND_DIR: app/frontend
+  BACKEND_DIR: app/backend
+  FRONTEND_REPO: stylevault-frontend
+  BACKEND_REPO: stylevault-backend
+
 jobs:
   build-scan-push-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      # ✅ Login to DockerHub (NO TOKEN)
-      - name: Login to DockerHub
-        uses: docker/login-action@v3
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+          aws-region: ${{ env.AWS_REGION }}
+          # For OIDC IAM Role → no need to store access keys
 
-      - name: Build Backend image
-        run: docker build -t vanshp17/project-backend:latest ./app/backend
+      - name: Get AWS Account ID
+        id: aws
+        run: echo "ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)" >> $GITHUB_OUTPUT
 
-      - name: Build Frontend image
-        run: docker build -t vanshp17/project-frontend:latest ./app/frontend
+      - name: Login to ECR
+        run: |
+          aws ecr get-login-password --region $AWS_REGION \
+            | docker login --username AWS --password-stdin \
+              ${{ steps.aws.outputs.ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com
 
-      # ✅ Install Trivy
+      # BUILD IMAGES
+      - name: Build Backend Image
+        run: |
+          docker build -t ${{ steps.aws.outputs.ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/${{ env.BACKEND_REPO }}:latest \
+            $BACKEND_DIR
+
+      - name: Build Frontend Image
+        run: |
+          docker build -t ${{ steps.aws.outputs.ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/${{ env.FRONTEND_REPO }}:latest \
+            $FRONTEND_DIR
+
+      # SECURITY SCAN
       - name: Install Trivy
         run: |
           sudo apt-get update && sudo apt-get install -y wget
-          wget -qO- https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
+          wget -qO- https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+            | sudo sh -s -- -b /usr/local/bin
 
-      # ✅ Scan Images (does not stop pipeline)
-      - name: Scan Backend Image
-        run: trivy image --severity CRITICAL,HIGH --exit-code 1 vanshp17/project-backend:latest
+      - name: Scan Backend image
+        run: trivy image --severity CRITICAL,HIGH \
+          ${{ steps.aws.outputs.ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/${{ env.BACKEND_REPO }}:latest
 
-      - name: Scan Frontend Image
-        run: trivy image --severity CRITICAL,HIGH --exit-code 1 vanshp17/project-frontend:latest
+      - name: Scan Frontend image
+        run: trivy image --severity CRITICAL,HIGH \
+          ${{ steps.aws.outputs.ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/${{ env.FRONTEND_REPO }}:latest
 
-      # ✅ Push images to DockerHub
-      - name: Push images
+      # PUSH TO ECR
+      - name: Push images to ECR
         run: |
-          docker push vanshp17/project-frontend:latest
-          docker push vanshp17/project-backend:latest
+          docker push ${{ steps.aws.outputs.ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/${{ env.FRONTEND_REPO }}:latest
+          docker push ${{ steps.aws.outputs.ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/${{ env.BACKEND_REPO }}:latest
 
-      # ✅ Deploy on VM after Terraform (automated)
-      - name: SSH & Deploy Containers
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.VM_IP }}
-          username: ${{ secrets.VM_USER }}
-          password: ${{ secrets.VM_PASSWORD }}
-          script: |
-            docker pull vanshp17/project-backend:latest
-            docker pull vanshp17/project-frontend:latest
+      # DEPLOY USING SSM (NO SSH)
+      - name: Get EC2 Instance ID
+        id: ec2
+        run: |
+          IID=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=stylevault-app" \
+                     "Name=instance-state-name,Values=running" \
+            --query "Reservations[0].Instances[0].InstanceId" \
+            --output text)
+          echo "INSTANCE_ID=$IID" >> $GITHUB_OUTPUT
 
-            docker stop backend || true
-            docker stop frontend || true
-            
-            docker rm backend || true
-            docker rm frontend || true
-
-            docker run -d --name backend -p 5000:5000 vanshp17/project-backend:latest
-            docker run -d --name frontend -p 80:3000 vanshp17/project-frontend:latest
+      - name: Restart containers on EC2
+        run: |
+          aws ssm send-command \
+            --document-name "AWS-RunShellScript" \
+            --instance-ids ${{ steps.ec2.outputs.INSTANCE_ID }} \
+            --comment "Deploy StyleVault App" \
+            --parameters commands='[
+              "cd /opt/app",
+              "docker compose -f docker-compose.prod.yml pull",
+              "docker compose -f docker-compose.prod.yml up -d"
+            ]'

@@ -1,17 +1,11 @@
-output "vm_public_ip" {
-  description = "Public IP of the VM"
-  value       = azurerm_public_ip.pip.ip_address
+output "ec2_public_ip" {
+  value = aws_instance.app.public_ip
 }
 
-output "acr_login_server" {
-  description = "ACR login server"
-  value       = azurerm_container_registry.acr.login_server
+output "frontend_ecr" {
+  value = aws_ecr_repository.frontend.repository_url
 }
 
-output "acr_name" {
-  value = azurerm_container_registry.acr.name
-}
-
-output "public_fqdn" {
-  value = azurerm_public_ip.pip.fqdn
+output "backend_ecr" {
+  value = aws_ecr_repository.backend.repository_url
 }

@@ -1,35 +1,21 @@
-variable "resource_group" {
-  type        = string
-  default     = "devops-rg"
+variable "aws_region" {
+  type    = string
+  default = "ap-south-1"
 }
 
-variable "location" {
-  type        = string
-  default     = "centralindia"
+variable "project_name" {
+  type    = string
+  default = "stylevault"
 }
 
-variable "vm_name" {
-  type        = string
-  default     = "devops-vm"
-}
-
-variable "vm_username" {
-  type        = string
-  default     = "azureuser"
-}
-
-variable "ssh_public_key" {
+variable "key_name" {
+  description = "Existing EC2 key pair name (for SSH). Leave empty to skip."
   type        = string
   default     = ""
 }
 
-variable "vm_size" {
+variable "allow_ssh_cidr" {
+  description = "Your IP/CIDR for SSH (optional)."
   type        = string
-  default     = "Standard_B1s"
-}
-
-# ACR name variable (static by default, Terraform will override)
-variable "acr_name" {
-  type        = string
-  default     = "devopsacr"
+  default     = "0.0.0.0/0"
 }

@@ -1,184 +1,189 @@
-########################################################
-# random suffix used to help make acr name unique
-########################################################
-resource "random_string" "suffix" {
-  length  = 4
-  upper   = false
-  numeric = true
-  special = false
+#########################################
+# LOCALS
+#########################################
+locals {
+  frontend_repo = "${var.project_name}-frontend"
+  backend_repo  = "${var.project_name}-backend"
+  name_prefix   = "${var.project_name}-app"
 }
 
-########################################################
-# Resource Group
-# - IMPORTANT: if this RG already exists, import it (commands below)
-########################################################
-resource "azurerm_resource_group" "rg" {
-  name     = var.resource_group
-  location = var.location
+#########################################
+# DATA SOURCES
+#########################################
+
+# Default VPC
+data "aws_vpc" "default" {
+  default = true
 }
 
-########################################################
-# Virtual Network + Subnet + NSG
-########################################################
-resource "azurerm_virtual_network" "vnet" {
-  name                = "${var.resource_group}-vnet"
-  address_space       = ["10.0.0.0/16"]
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
-}
-
-resource "azurerm_subnet" "subnet" {
-  name                 = "${var.resource_group}-subnet"
-  resource_group_name  = azurerm_resource_group.rg.name
-  virtual_network_name = azurerm_virtual_network.vnet.name
-  address_prefixes     = ["10.0.1.0/24"]
-}
-
-resource "azurerm_network_security_group" "nsg" {
-  name                = "${var.resource_group}-nsg"
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
-
-  security_rule {
-    name                       = "Allow-HTTP"
-    priority                   = 100
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "80"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
-  }
-
-  security_rule {
-    name                       = "Allow-SSH"
-    priority                   = 110
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "22"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
-  }
-
-  security_rule {
-    name                       = "Allow-Prom"
-    priority                   = 120
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "9090"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
+# Default subnets
+data "aws_subnets" "default" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.default.id]
   }
 }
 
-resource "azurerm_subnet_network_security_group_association" "assoc" {
-  subnet_id                 = azurerm_subnet.subnet.id
-  network_security_group_id = azurerm_network_security_group.nsg.id
-}
+# Ubuntu AMI (22.04 LTS)
+data "aws_ami" "ubuntu" {
+  most_recent = true
+  owners      = ["099720109477"] # Canonical
 
-########################################################
-# Public IP (with DNS FQDN)
-########################################################
-resource "azurerm_public_ip" "pip" {
-  name                = "${var.resource_group}-pip"
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
-  allocation_method   = "Static"
-  sku                 = "Basic"
-
-  domain_name_label = "${var.resource_group}-app"
-}
-
-########################################################
-# NIC
-########################################################
-resource "azurerm_network_interface" "nic" {
-  name                = "${var.resource_group}-nic"
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
-
-  ip_configuration {
-    name                          = "ipconfig1"
-    subnet_id                     = azurerm_subnet.subnet.id
-    private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.pip.id
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
   }
 }
 
-########################################################
-# Linux VM (small)
-########################################################
-resource "azurerm_linux_virtual_machine" "vm" {
-  name                = var.vm_name
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
-  size                = var.vm_size
-  admin_username      = var.vm_username
-  network_interface_ids = [azurerm_network_interface.nic.id]
+#########################################
+# ECR REPOSITORIES
+#########################################
+resource "aws_ecr_repository" "frontend" {
+  name = local.frontend_repo
 
-  admin_ssh_key {
-    username   = var.vm_username
-    public_key = var.ssh_public_key
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+}
+
+resource "aws_ecr_repository" "backend" {
+  name = local.backend_repo
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+}
+
+#########################################
+# SECURITY GROUP (HTTP + SSH)
+#########################################
+resource "aws_security_group" "web_sg" {
+  name        = "${local.name_prefix}-sg"
+  description = "Allow HTTP + SSH"
+  vpc_id      = data.aws_vpc.default.id
+
+  ingress {
+    description = "HTTP"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
-  os_disk {
-    caching              = "ReadWrite"
-    storage_account_type = "Standard_LRS"
+  ingress {
+    description = "SSH"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = [var.allow_ssh_cidr]
   }
 
-  source_image_reference {
-    publisher = "Canonical"
-    offer     = "0001-com-ubuntu-server-jammy"
-    sku       = "22_04-lts"
-    version   = "latest"
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
   }
+}
 
-  # -------------------- AUTOMATION SCRIPT --------------------
-  custom_data = base64encode(<<EOF
-#!/bin/bash
+#########################################
+# IAM ROLE FOR EC2 (ECR PULL + SSM)
+#########################################
+data "aws_iam_policy_document" "ec2_assume" {
+  statement {
+    actions = ["sts:AssumeRole"]
 
-# Update & Install Docker
-apt-get update -y
-apt-get install -y ca-certificates curl gnupg lsb-release
-apt-get install -y docker.io
+    principals {
+      type        = "Service"
+      identifiers = ["ec2.amazonaws.com"]
+    }
+  }
+}
 
-# Enable Docker
-systemctl start docker
-systemctl enable docker
+resource "aws_iam_role" "ec2_role" {
+  name               = "${local.name_prefix}-role"
+  assume_role_policy = data.aws_iam_policy_document.ec2_assume.json
+}
 
-# Login not required for DockerHub public repo
-# Pull Docker image
-docker pull YOUR_DOCKERHUB_USERNAME/YOUR_IMAGE_NAME:latest
+resource "aws_iam_role_policy_attachment" "ecr_pull" {
+  role       = aws_iam_role.ec2_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+}
 
-# Stop previous container if running
-docker stop app || true
-docker rm app || true
+resource "aws_iam_role_policy_attachment" "ssm_core" {
+  role       = aws_iam_role.ec2_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
 
-# Run container
-docker run -d --name app -p 80:80 YOUR_DOCKERHUB_USERNAME/YOUR_IMAGE_NAME:latest
+resource "aws_iam_instance_profile" "ec2_profile" {
+  name = "${local.name_prefix}-profile"
+  role = aws_iam_role.ec2_role.name
+}
 
-EOF
-  )
-  # -----------------------------------------------------------
+#########################################
+# EC2 INSTANCE (Docker, Compose, ECR pull, App deploy)
+#########################################
+resource "aws_instance" "app" {
+  ami                         = data.aws_ami.ubuntu.id
+  instance_type               = "t3.micro"
+  subnet_id                   = data.aws_subnets.default.ids[0]
+  associate_public_ip_address = true
+  iam_instance_profile        = aws_iam_instance_profile.ec2_profile.name
+  vpc_security_group_ids      = [aws_security_group.web_sg.id]
+  key_name                    = var.key_name != "" ? var.key_name : null
 
   tags = {
-    environment = "devops-auto"
+    Name = local.name_prefix
   }
-}
 
-########################################################
-# Azure Container Registry
-# - If this ACR already exists in the resource group, you must import it OR delete it before apply.
-########################################################
-resource "azurerm_container_registry" "acr" {
-  name                = "${var.acr_name}${random_string.suffix.result}"
-  resource_group_name = azurerm_resource_group.rg.name
-  location            = azurerm_resource_group.rg.location
-  sku                 = "Basic"
-  admin_enabled       = true
+  user_data = <<EOF
+#!/bin/bash
+set -e
+
+# Install Docker & Compose v2
+apt-get update -y
+apt-get install -y ca-certificates curl gnupg lsb-release awscli
+apt-get install -y docker.io
+systemctl enable docker
+systemctl start docker
+
+# Login to ECR using instance role
+ACCOUNT_ID=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep accountId | awk -F\" '{print $$4}')
+AWS_REGION="${var.aws_region}"
+
+aws ecr get-login-password --region $${AWS_REGION} | docker login --username AWS --password-stdin $${ACCOUNT_ID}.dkr.ecr.$${AWS_REGION}.amazonaws.com
+
+mkdir -p /opt/app
+
+cat >/opt/app/docker-compose.prod.yml <<'YAML'
+services:
+  frontend:
+    image: $${ACCOUNT_ID}.dkr.ecr.$${AWS_REGION}.amazonaws.com/stylevault-frontend:latest
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+  backend:
+    image: $${ACCOUNT_ID}.dkr.ecr.$${AWS_REGION}.amazonaws.com/stylevault-backend:latest
+    environment:
+      MONGO_URI: mongodb://mongo:27017/admin
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:4.4
+    command: --bind_ip_all
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:
+YAML
+
+
+cd /opt/app
+docker compose -f docker-compose.prod.yml pull || true
+docker compose -f docker-compose.prod.yml up -d
+EOF
 }
