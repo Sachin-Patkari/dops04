@@ -50,7 +50,9 @@ jobs:
       # BUILD FRONTEND
       - name: Build Frontend Image
         run: |
+          echo "Building frontend with REACT_APP_API_URL=$REACT_APP_API_URL"
           docker build --no-cache \
+          --build-arg REACT_APP_API_URL=$REACT_APP_API_URL \
           -t ${{ steps.aws.outputs.ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/${{ env.FRONTEND_REPO }}:latest \
           $FRONTEND_DIR
 
