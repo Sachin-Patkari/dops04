@@ -43,21 +43,16 @@ jobs:
       # BUILD BACKEND
       - name: Build Backend Image
         run: |
-          docker build -t \
-          ${{ steps.aws.outputs.ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/${{ env.BACKEND_REPO }}:latest \
+          docker build --no-cache \
+          -t ${{ steps.aws.outputs.ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/${{ env.BACKEND_REPO }}:latest \
           $BACKEND_DIR
 
       # BUILD FRONTEND
       - name: Build Frontend Image
-        env:
-          REACT_APP_API_URL: "http://13.235.61.25"   # ✅ YOUR EC2 PUBLIC IP
         run: |
-          echo "REACT_APP_API_URL=$REACT_APP_API_URL"
-          docker build \
-            --build-arg REACT_APP_API_URL=$REACT_APP_API_URL \
-            -t ${{ steps.aws.outputs.ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/${{ env.FRONTEND_REPO }}:latest \
-            $FRONTEND_DIR
-
+          docker build --no-cache \
+          -t ${{ steps.aws.outputs.ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/${{ env.FRONTEND_REPO }}:latest \
+          $FRONTEND_DIR
 
       # INSTALL TRIVY
       - name: Install Trivy
