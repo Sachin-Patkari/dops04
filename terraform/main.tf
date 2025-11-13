@@ -136,10 +136,13 @@ resource "aws_instance" "app" {
     Name = local.name_prefix
   }
 
-  user_data = <<-EOF
+user_data = <<-EOF
 #!/bin/bash
 set -e
 
+##################################
+# INSTALL DOCKER + COMPOSE
+##################################
 apt-get update -y
 apt-get install -y ca-certificates curl gnupg lsb-release awscli docker.io
 systemctl enable docker
@@ -149,12 +152,35 @@ curl -SL https://github.com/docker/compose/releases/download/v2.29.2/docker-comp
 chmod +x /usr/local/bin/docker-compose
 ln -sf /usr/local/bin/docker-compose /usr/bin/docker-compose
 
+##################################
+# AUTO LOGIN TO ECR ON EVERY BOOT
+##################################
+cat >/etc/systemd/system/ecr-login.service <<EOT
+[Unit]
+Description=Login to ECR
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ecr-login.sh
+
+[Install]
+WantedBy=multi-user.target
+EOT
+
+cat >/usr/local/bin/ecr-login.sh <<EOT
+#!/bin/bash
 ACCOUNT_ID=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep accountId | awk -F'"' '{print $4}')
 AWS_REGION="${var.aws_region}"
 
 aws ecr get-login-password --region $AWS_REGION \
     | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+EOT
+chmod +x /usr/local/bin/ecr-login.sh
+systemctl enable ecr-login
 
+##################################
+# CREATE docker-compose.prod.yml
+##################################
 mkdir -p /opt/app
 
 cat >/opt/app/docker-compose.prod.yml <<EOT
@@ -183,9 +209,32 @@ volumes:
   mongo-data:
 EOT
 
+##################################
+# AUTO DEPLOY ON EVERY BOOT
+##################################
+cat >/etc/systemd/system/app-stack.service <<EOT
+[Unit]
+Description=Deploy Docker stack
+After=docker.service ecr-login.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/redeploy.sh
+
+[Install]
+WantedBy=multi-user.target
+EOT
+
+cat >/usr/local/bin/redeploy.sh <<EOT
+#!/bin/bash
 cd /opt/app
-docker-compose -f docker-compose.prod.yml pull || true
-docker-compose -f docker-compose.prod.yml up -d
+/usr/local/bin/docker-compose -f docker-compose.prod.yml pull
+/usr/local/bin/docker-compose -f docker-compose.prod.yml up -d
+EOT
+
+chmod +x /usr/local/bin/redeploy.sh
+systemctl enable app-stack
+
 EOF
 
 }
