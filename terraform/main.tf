@@ -11,12 +11,10 @@ locals {
 # DATA SOURCES
 #########################################
 
-# Default VPC
 data "aws_vpc" "default" {
   default = true
 }
 
-# Default subnets
 data "aws_subnets" "default" {
   filter {
     name   = "vpc-id"
@@ -24,10 +22,9 @@ data "aws_subnets" "default" {
   }
 }
 
-# Ubuntu AMI (22.04 LTS)
 data "aws_ami" "ubuntu" {
   most_recent = true
-  owners      = ["099720109477"] # Canonical
+  owners      = ["099720109477"]
 
   filter {
     name   = "name"
@@ -36,34 +33,27 @@ data "aws_ami" "ubuntu" {
 }
 
 #########################################
-# ECR REPOSITORIES
+# ECR REPOS
 #########################################
+
 resource "aws_ecr_repository" "frontend" {
   name = local.frontend_repo
-
-  image_scanning_configuration {
-    scan_on_push = true
-  }
 }
 
 resource "aws_ecr_repository" "backend" {
   name = local.backend_repo
-
-  image_scanning_configuration {
-    scan_on_push = true
-  }
 }
 
 #########################################
-# SECURITY GROUP (HTTP + SSH)
+# SECURITY GROUP
 #########################################
+
 resource "aws_security_group" "web_sg" {
   name        = "${local.name_prefix}-sg"
-  description = "Allow HTTP + SSH"
+  description = "Allow HTTP and SSH"
   vpc_id      = data.aws_vpc.default.id
 
   ingress {
-    description = "HTTP"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
@@ -71,7 +61,6 @@ resource "aws_security_group" "web_sg" {
   }
 
   ingress {
-    description = "SSH"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
@@ -87,8 +76,9 @@ resource "aws_security_group" "web_sg" {
 }
 
 #########################################
-# IAM ROLE FOR EC2 (ECR PULL + SSM)
+# IAM ROLE
 #########################################
+
 data "aws_iam_policy_document" "ec2_assume" {
   statement {
     actions = ["sts:AssumeRole"]
@@ -105,7 +95,7 @@ resource "aws_iam_role" "ec2_role" {
   assume_role_policy = data.aws_iam_policy_document.ec2_assume.json
 }
 
-resource "aws_iam_role_policy_attachment" "ecr_pull" {
+resource "aws_iam_role_policy_attachment" "ecr_read" {
   role       = aws_iam_role.ec2_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
@@ -121,7 +111,7 @@ resource "aws_iam_instance_profile" "ec2_profile" {
 }
 
 #########################################
-# EC2 INSTANCE (Docker, Compose, ECR pull, App deploy)
+# EC2 INSTANCE
 #########################################
 resource "aws_instance" "app" {
   ami                         = data.aws_ami.ubuntu.id
@@ -130,7 +120,6 @@ resource "aws_instance" "app" {
   associate_public_ip_address = true
   iam_instance_profile        = aws_iam_instance_profile.ec2_profile.name
   vpc_security_group_ids      = [aws_security_group.web_sg.id]
-  key_name                    = var.key_name != "" ? var.key_name : null
 
   tags = {
     Name = local.name_prefix
@@ -140,29 +129,25 @@ resource "aws_instance" "app" {
 #!/bin/bash
 set -e
 
-# Install dependencies
 apt-get update -y
-apt-get install -y ca-certificates curl gnupg lsb-release awscli docker.io
-
+apt-get install -y awscli docker.io
 systemctl enable docker
 systemctl start docker
 
-# Install docker-compose
+# Install Docker Compose v2
 curl -SL https://github.com/docker/compose/releases/download/v2.29.2/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
 chmod +x /usr/local/bin/docker-compose
-ln -sf /usr/local/bin/docker-compose /usr/bin/docker-compose
+ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
 
-# Get account ID + login to ECR
+# Fetch AWS metadata
 ACCOUNT_ID=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep accountId | awk -F'"' '{print $4}')
 AWS_REGION="${var.aws_region}"
 
-aws ecr get-login-password --region $AWS_REGION \
-    | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+# Login to ECR
+aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
-# Create app directory
 mkdir -p /opt/app
 
-# Write docker-compose file
 cat >/opt/app/docker-compose.prod.yml <<EOT
 services:
   frontend:
@@ -190,9 +175,8 @@ volumes:
 EOT
 
 cd /opt/app
-
-docker-compose -f docker-compose.prod.yml pull || true
-docker-compose -f docker-compose.prod.yml up -d
+docker-compose pull || true
+docker-compose up -d
 
 EOF
 }
