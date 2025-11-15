@@ -97,7 +97,7 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --instance-ids ${{ steps.ec2.outputs.INSTANCE_ID }} \
             --comment "Deploy StyleVault App" \
-            --parameters '{"commands":["cd /opt/app","docker compose -f docker-compose.prod.yml pull","docker compose -f docker-compose.prod.yml up -d"]}' \
+            --parameters '{"commands":["cd /opt/app","sudo docker-compose -f docker-compose.prod.yml pull","sudo docker-compose -f docker-compose.prod.yml up -d"]}' \
             --output text
 
       - name: Upload monitoring stack to S3
@@ -114,8 +114,8 @@ jobs:
               "sudo mkdir -p /opt/monitoring",
               "sudo aws s3 sync s3://my-devops-monitoring-bucket/monitoring/ /opt/monitoring --delete",
               "cd /opt/monitoring",
-              "sudo docker compose -f docker-compose.monitor.yml pull",
-              "sudo docker compose -f docker-compose.monitor.yml up -d"
+              "sudo docker-compose -f docker-compose.monitor.yml pull",
+              "sudo docker-compose -f docker-compose.monitor.yml up -d"
             ]}' \
             --output text
 
