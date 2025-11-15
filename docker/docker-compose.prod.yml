@@ -54,22 +54,34 @@ services:
     networks:
       - stylevault_net
 
-  # 📊 Prometheus — scrapes metrics from backend & node-exporter
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - stylevault_net
+
   prometheus:
     image: prom/prometheus
     container_name: prometheus
     restart: unless-stopped
-    volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports:
       - "9090:9090"
-    depends_on:
-      - backend
-      - node-exporter
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     networks:
       - stylevault_net
+    depends_on:
+      - node-exporter
+      - cadvisor
 
-  # 📈 Grafana — visualizes metrics from Prometheus
   grafana:
     image: grafana/grafana
     container_name: grafana
@@ -81,10 +93,10 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
       - ./grafana:/var/lib/grafana
-    depends_on:
-      - prometheus
     networks:
       - stylevault_net
+    depends_on:
+      - prometheus
 
 networks:
   stylevault_net:

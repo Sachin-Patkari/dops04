@@ -35,19 +35,19 @@ data "aws_ami" "ubuntu" {
 #########################################
 # ECR REPOS
 #########################################
-
 resource "aws_ecr_repository" "frontend" {
   name = local.frontend_repo
+  force_delete = true
 }
 
 resource "aws_ecr_repository" "backend" {
   name = local.backend_repo
+  force_delete = true
 }
 
 #########################################
 # SECURITY GROUP
 #########################################
-
 resource "aws_security_group" "web_sg" {
   name        = "${local.name_prefix}-sg"
   description = "Allow HTTP and SSH"
@@ -78,11 +78,9 @@ resource "aws_security_group" "web_sg" {
 #########################################
 # IAM ROLE
 #########################################
-
 data "aws_iam_policy_document" "ec2_assume" {
   statement {
     actions = ["sts:AssumeRole"]
-
     principals {
       type        = "Service"
       identifiers = ["ec2.amazonaws.com"]
@@ -135,20 +133,23 @@ systemctl enable docker
 systemctl start docker
 
 # Install Docker Compose v2
-curl -SL https://github.com/docker/compose/releases/download/v2.29.2/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
+curl -SL https://github.com/docker/compose/releases/download/v2.29.2/docker-compose-linux-x86_64 \
+     -o /usr/local/bin/docker-compose
 chmod +x /usr/local/bin/docker-compose
 ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
 
-# Fetch AWS metadata
 ACCOUNT_ID=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep accountId | awk -F'"' '{print $4}')
 AWS_REGION="${var.aws_region}"
 
 # Login to ECR
-aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+aws ecr get-login-password --region $AWS_REGION \
+  | docker login --username AWS --password-stdin \
+    $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
 mkdir -p /opt/app
 
-cat >/opt/app/docker-compose.prod.yml <<EOT
+# Write compose file
+cat <<EOT > /opt/app/docker-compose.prod.yml
 services:
   frontend:
     image: $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/stylevault-frontend:latest
@@ -174,9 +175,9 @@ volumes:
   mongo-data:
 EOT
 
-cd /opt/app
-docker-compose pull || true
-docker-compose up -d
+# FIXED — use full path
+docker-compose -f /opt/app/docker-compose.prod.yml pull
+docker-compose -f /opt/app/docker-compose.prod.yml up -d
 
 EOF
 }

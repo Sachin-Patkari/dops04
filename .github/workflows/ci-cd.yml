@@ -99,3 +99,24 @@ jobs:
             --comment "Deploy StyleVault App" \
             --parameters '{"commands":["cd /opt/app","docker compose -f docker-compose.prod.yml pull","docker compose -f docker-compose.prod.yml up -d"]}' \
             --output text
+
+      - name: Upload monitoring stack to S3
+        run: |
+          aws s3 sync monitoring/ s3://YOUR_BUCKET/monitoring --delete
+
+      - name: Deploy Monitoring Stack
+        run: |
+          aws ssm send-command \
+            --document-name "AWS-RunShellScript" \
+            --instance-ids ${{ steps.ec2.outputs.INSTANCE_ID }} \
+            --comment "Deploy monitoring services" \
+            --parameters '{"commands":[
+              "sudo mkdir -p /opt/monitoring",
+              "sudo aws s3 sync s3://YOUR_BUCKET/monitoring/ /opt/monitoring --delete",
+              "cd /opt/monitoring",
+              "sudo docker compose -f docker-compose.monitor.yml pull",
+              "sudo docker compose -f docker-compose.monitor.yml up -d"
+            ]}' \
+            --output text
+
+
