@@ -102,7 +102,7 @@ jobs:
 
       - name: Upload monitoring stack to S3
         run: |
-          aws s3 sync monitoring/ s3://YOUR_BUCKET/monitoring --delete
+          aws s3 sync monitoring/ s3://my-devops-monitoring-bucket/monitoring --delete
 
       - name: Deploy Monitoring Stack
         run: |
@@ -112,7 +112,7 @@ jobs:
             --comment "Deploy monitoring services" \
             --parameters '{"commands":[
               "sudo mkdir -p /opt/monitoring",
-              "sudo aws s3 sync s3://YOUR_BUCKET/monitoring/ /opt/monitoring --delete",
+              "sudo aws s3 sync s3://my-devops-monitoring-bucket/monitoring/ /opt/monitoring --delete",
               "cd /opt/monitoring",
               "sudo docker compose -f docker-compose.monitor.yml pull",
               "sudo docker compose -f docker-compose.monitor.yml up -d"
