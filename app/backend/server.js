@@ -5,6 +5,18 @@ import dotenv from 'dotenv';
 import orderRoutes from './routes/orderRoutes.js';
 
 dotenv.config();
+const client = require("prom-client");
+
+// Create a Prometheus Registry
+const register = new client.Registry();
+
+// Collect default Node.js metrics (CPU, Memory, Event Loop, GC)
+client.collectDefaultMetrics({ register });
+app.get("/metrics", async (req, res) => {
+  res.set("Content-Type", register.contentType);
+  res.end(await register.metrics());
+});
+
 
 const app = express();
 
