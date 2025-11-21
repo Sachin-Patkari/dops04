@@ -17,7 +17,7 @@ services:
       - '--path.sysfs=/host/sys'
       - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
     networks:
-      - app_default
+      - app_app_net
 
   # 📦 cAdvisor — container metrics
   cadvisor:
@@ -32,7 +32,7 @@ services:
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
     networks:
-      - app_default
+      - app_app_net
 
   # 📊 Prometheus — scrapes node-exporter + cAdvisor
   prometheus:
@@ -44,7 +44,7 @@ services:
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     networks:
-      - app_default
+      - app_app_net
 
   # 📈 Grafana — dashboards
   grafana:
@@ -59,11 +59,11 @@ services:
     volumes:
       - grafana-data:/var/lib/grafana
     networks:
-      - app_default
+      - app_app_net
 
 volumes:
   grafana-data:
 
 networks:
-  app_default:
+  app_app_net:
     external: true
