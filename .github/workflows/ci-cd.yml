@@ -91,6 +91,10 @@ jobs:
             --output text)
           echo "INSTANCE_ID=$IID" >> $GITHUB_OUTPUT
 
+      - name: Upload monitoring stack to S3
+        run: |
+          aws s3 sync monitoring/ s3://my-devops-monitoring-bucket/monitoring --delete
+
       - name: Restart containers on EC2
         run: |
           aws ssm send-command \
@@ -99,10 +103,6 @@ jobs:
             --comment "Deploy StyleVault App" \
             --parameters '{"commands":["cd /opt/app","sudo docker-compose -f docker-compose.prod.yml pull","sudo docker-compose -f docker-compose.prod.yml up -d"]}' \
             --output text
-
-      - name: Upload monitoring stack to S3
-        run: |
-          aws s3 sync monitoring/ s3://my-devops-monitoring-bucket/monitoring --delete
 
       - name: Deploy Monitoring Stack
         run: |
