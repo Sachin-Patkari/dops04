@@ -66,6 +66,46 @@ resource "aws_security_group" "web_sg" {
     protocol    = "tcp"
     cidr_blocks = [var.allow_ssh_cidr]
   }
+    # Backend metrics
+  ingress {
+    from_port   = 5001
+    to_port     = 5001
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Node exporter
+  ingress {
+    from_port   = 9100
+    to_port     = 9100
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # cAdvisor
+  ingress {
+    from_port   = 8081
+    to_port     = 8081
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Prometheus
+  ingress {
+    from_port   = 9090
+    to_port     = 9090
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Grafana
+  ingress {
+    from_port   = 3000
+    to_port     = 3000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
 
   egress {
     from_port   = 0
@@ -78,6 +118,7 @@ resource "aws_security_group" "web_sg" {
 #########################################
 # IAM ROLE
 #########################################
+
 data "aws_iam_policy_document" "ec2_assume" {
   statement {
     actions = ["sts:AssumeRole"]
@@ -92,6 +133,35 @@ resource "aws_iam_role" "ec2_role" {
   name               = "${local.name_prefix}-role"
   assume_role_policy = data.aws_iam_policy_document.ec2_assume.json
 }
+
+# ---- ADD S3 POLICY AFTER THE ROLE ----
+resource "aws_iam_policy" "s3_monitoring_read" {
+  name = "${local.name_prefix}-s3-monitoring-read"
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "s3:GetObject",
+          "s3:ListBucket"
+        ],
+        Resource = [
+          "arn:aws:s3:::my-devops-monitoring-bucket",
+          "arn:aws:s3:::my-devops-monitoring-bucket/*"
+        ]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "s3_read_attach" {
+  role       = aws_iam_role.ec2_role.name
+  policy_arn = aws_iam_policy.s3_monitoring_read.arn
+}
+
+# --------------------------------------
 
 resource "aws_iam_role_policy_attachment" "ecr_read" {
   role       = aws_iam_role.ec2_role.name
