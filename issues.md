@@ -5,8 +5,9 @@ Cause:
 docker-compose.prod.yml used images that belonged to another intern:
 
 vanshp17/project-backend:latest
-
 vanshp17/project-frontend:latest
+
+
 These private images cannot be pulled.
 
 Fix:
@@ -41,7 +42,7 @@ Original:
 CMD ["node", "index.js"]
 
 
-But backend entry file was server.js.
+Backend entry file was actually server.js.
 
 Fix:
 ✔ Updated to:
@@ -50,10 +51,11 @@ CMD ["node", "server.js"]
 
 Issue 5 — No MongoDB Container / Env Variables
 
-Backend expected MongoDB but no DB service or environment variables were provided.
+Backend expected MongoDB, but no DB service or environment variables were provided.
 
 Fix:
-✔ Added missing DB variables and corrected configuration.
+✔ Added missing DB variables
+✔ Corrected configuration
 
 Issue 6 — Frontend Sending Wrong API Request
 
@@ -69,7 +71,7 @@ http://localhost:5001/api/orders
 
 Fix:
 ✔ Corrected .env
-✔ Updated reverse proxy settings.
+✔ Updated reverse proxy settings
 
 Issue 7 — Backend Dockerfile Was Broken
 
@@ -96,12 +98,12 @@ Hardcoded IPs inside frontend.
 
 Fix:
 ✔ Introduced Nginx reverse proxy
-✔ Updated all frontend API calls to /api/*
-✔ proxy_pass http://backend:5000;
+✔ Updated all API calls to /api/*
+✔ Updated proxy_pass http://backend:5000;
 
 Issue 9 — React SPA Refresh Returned 404
 
-Nginx default config doesn’t support SPA routing.
+Nginx default config does not support SPA routing.
 
 Fix:
 ✔ Added:
@@ -122,31 +124,31 @@ Causes:
 
 Wrong service names
 
-No shared network
+Missing network
 
 Missing depends_on
 
-Backend port mismatch
+Wrong backend port
 
 Fix:
-✔ Created single shared network
-✔ Fixed ports
+✔ Created shared network
+✔ Corrected ports
 ✔ Corrected service names
 ✔ Added depends_on
 
 Issue 12 — Backend Not Reachable Inside Docker Network
 
-Fixed by ensuring internal hostname usage:
-
-✔ Backend reachable at:
+Fix:
+✔ Ensured backend reachable at:
 http://backend:5000
 
-✔ Updated Nginx reverse proxy accordingly.
+✔ Updated Nginx proxy_pass
+✔ Updated env variables
 
 Issue 13 — Missing .dockerignore
 
 Fix:
-✔ Cleaned and optimized .dockerignore.
+✔ Cleaned and optimized .dockerignore
 
 <br>
 ☁️ 2. Terraform / AWS Infrastructure Issues
@@ -155,7 +157,7 @@ Issue 14 — Missing Variables
 main.tf referenced undefined variables.
 
 Fix:
-✔ Created proper variables.tf
+✔ Added variables.tf
 ✔ Added region + AMI variables
 
 Issue 15 — Wrong AMI / Region
@@ -163,7 +165,7 @@ Issue 15 — Wrong AMI / Region
 AMI belonged to another region.
 
 Fix:
-✔ Replaced with correct AMI for ap-south-1
+✔ Updated AMI for ap-south-1
 ✔ Hardcoded region if needed
 
 Issue 16 — Broken Terraform File Structure
@@ -172,15 +174,15 @@ Mixed modules + raw resources.
 
 Fix:
 ✔ Refactored Terraform folder
-✔ Fixed formatting (terraform fmt)
-✔ Passed validation (terraform validate)
+✔ Ran terraform fmt
+✔ Passed terraform validate
 
 <br>
 🔄 3. CI/CD (GitHub Actions) Issues
 Issue 17 — CI/CD YAML Indentation Errors
 
 Fix:
-✔ Rewrote entire CI/CD workflow
+✔ Rewrote CI/CD workflow
 ✔ Validated YAML syntax
 
 Issue 18 — Wrong Dockerfile Paths
@@ -208,7 +210,7 @@ docker/login-action@v2
 
 Issue 20 — Wrong Build Context
 
-Pipeline used . but needed folder-specific context.
+Pipeline used . but needed folder-specific paths.
 
 Fix:
 ✔ docker build ./backend
@@ -230,7 +232,7 @@ lookup backend on 127.0.0.11: server misbehaving
 
 Fix:
 ✔ Added extra_hosts
-✔ Updated target to:
+✔ Updated target:
 
 host.docker.internal:5000
 
@@ -238,7 +240,7 @@ Issue 23 — Prometheus Using Old Config
 
 Fix:
 ✔ Restarted container
-✔ Updated config properly
+✔ Updated config
 
 Issue 24 — Grafana Showed Empty Dashboards
 
@@ -252,9 +254,9 @@ Fix:
 ✔ Updated:
 
 datasource-prometheus.yaml
-
 dashboard-provider.yaml
 
+<br>
 🐳 7. Backend Issues
 Issue 26 — Deployment & Service Label Mismatch
 
@@ -266,7 +268,7 @@ app: frontend
 
 Issue 27 — Wrong containerPort
 
-Backend used 5000.
+Backend uses port 5000.
 
 Fix:
 ✔ Updated:
@@ -286,10 +288,7 @@ Issue 29 — Prometheus Metrics Failed Due to ES Modules
 
 Fix:
 ✔ Converted require → ESM import
-✔ Added metrics endpoint:
-
-/metrics
-
+✔ Added /metrics endpoint
 
 Backend now exposes:
 
@@ -307,7 +306,7 @@ Original container showed:
 (no published port)
 
 Fix:
-✔ Published backend correctly:
+✔ Published port correctly:
 
 ports:
   - "5001:5000"
@@ -326,8 +325,8 @@ Issue 32 — Monitoring Files Missing on EC2
 Cause: No S3 permissions.
 
 Fix:
-✔ Added S3 IAM
-✔ EC2 now auto-downloads monitoring files every deployment.
+✔ Added S3 IAM policy
+✔ EC2 now auto-downloads monitoring files
 
 <br>
 🟩 10. IAM Fixes
@@ -359,6 +358,7 @@ Issue 36 — Wrong Target Hostname
 
 Fix:
 ✔ Updated to:
+
 app-backend-1:5000
 
 <br>
@@ -376,14 +376,15 @@ Fix:
 🟩 14. Terraform Fixes (Final)
 Issue 38 — Missing Security Group Ports
 
-Added inbound:
+Added inbound rules:
 
-5001 backend
+5001 — Backend
 
-9090 Prometheus
+9090 — Prometheus
 
-9100 node-exporter
+9100 — Node Exporter
 
-8081 cAdvisor
+8081 — cAdvisor
 
-3000 Grafana
+3000 — Grafana
+
