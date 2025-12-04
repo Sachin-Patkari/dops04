@@ -152,8 +152,8 @@ stylevault/
 ### 1️⃣ Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/stylevault.git
-cd stylevault
+git clone https://github.com/Sachin-Patkari/dops04
+cd dops04
 ```
 
 ### 2️⃣ Configure AWS Credentials
@@ -420,8 +420,6 @@ docker-compose -f docker-compose.monitor.yml restart
 ---
 
 ## 👤 Author
-
-**Your Name**
 
 - GitHub: [@Sachin-Patkari](https://github.com/Sachin-Patkari)
 
