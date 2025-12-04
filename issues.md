@@ -190,7 +190,7 @@
 
 ---
 
-## 🐳 5. Kubernetes Issues
+## 🐳 5. Backend Issues
 
 ### Issue 26 — Deployment & Service Label Mismatch
 

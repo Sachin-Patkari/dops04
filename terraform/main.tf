@@ -1,6 +1,6 @@
 #########################################
 # LOCALS
-#########################################
+
 locals {
   frontend_repo = "${var.project_name}-frontend"
   backend_repo  = "${var.project_name}-backend"
@@ -9,7 +9,6 @@ locals {
 
 #########################################
 # DATA SOURCES
-#########################################
 
 data "aws_vpc" "default" {
   default = true
@@ -34,7 +33,7 @@ data "aws_ami" "ubuntu" {
 
 #########################################
 # ECR REPOS
-#########################################
+
 resource "aws_ecr_repository" "frontend" {
   name = local.frontend_repo
   force_delete = true
@@ -47,7 +46,7 @@ resource "aws_ecr_repository" "backend" {
 
 #########################################
 # SECURITY GROUP
-#########################################
+
 resource "aws_security_group" "web_sg" {
   name        = "${local.name_prefix}-sg"
   description = "Allow HTTP and SSH"
@@ -117,7 +116,6 @@ resource "aws_security_group" "web_sg" {
 
 #########################################
 # IAM ROLE
-#########################################
 
 data "aws_iam_policy_document" "ec2_assume" {
   statement {
@@ -134,7 +132,6 @@ resource "aws_iam_role" "ec2_role" {
   assume_role_policy = data.aws_iam_policy_document.ec2_assume.json
 }
 
-# ---- ADD S3 POLICY AFTER THE ROLE ----
 resource "aws_iam_policy" "s3_monitoring_read" {
   name = "${local.name_prefix}-s3-monitoring-read"
 
@@ -161,7 +158,6 @@ resource "aws_iam_role_policy_attachment" "s3_read_attach" {
   policy_arn = aws_iam_policy.s3_monitoring_read.arn
 }
 
-# --------------------------------------
 
 resource "aws_iam_role_policy_attachment" "ecr_read" {
   role       = aws_iam_role.ec2_role.name
@@ -180,7 +176,7 @@ resource "aws_iam_instance_profile" "ec2_profile" {
 
 #########################################
 # EC2 INSTANCE
-#########################################
+
 resource "aws_instance" "app" {
   ami                         = data.aws_ami.ubuntu.id
   instance_type               = "t3.micro"

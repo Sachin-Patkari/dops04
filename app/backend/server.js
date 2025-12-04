@@ -10,7 +10,7 @@ dotenv.config();
 const app = express();
 
 /* ---------------------------
-   📊 Prometheus Monitoring Setup
+    Prometheus Monitoring Setup
 --------------------------- */
 
 // Create a Prometheus Registry
@@ -26,7 +26,7 @@ app.get("/metrics", async (req, res) => {
 });
 
 /* ---------------------------
-   🌐 CORS Setup
+    CORS Setup
 --------------------------- */
 app.use(
   cors({
@@ -46,12 +46,12 @@ app.use(
 app.use(express.json());
 
 /* ---------------------------
-   📦 API Routes
+   API Routes
 --------------------------- */
 app.use("/api/orders", orderRoutes);
 
 /* ---------------------------
-   🚀 Server + Database
+    Server + Database
 --------------------------- */
 const PORT = process.env.PORT || 5000;
 
