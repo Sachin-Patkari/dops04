@@ -2,7 +2,6 @@
 
 <div align="center">
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![AWS](https://img.shields.io/badge/AWS-EC2%20%7C%20ECR%20%7C%20IAM-orange.svg)
 ![Terraform](https://img.shields.io/badge/IaC-Terraform-purple.svg)
 ![Docker](https://img.shields.io/badge/Container-Docker-blue.svg)
@@ -424,12 +423,6 @@ docker-compose -f docker-compose.monitor.yml restart
 
 **Your Name**
 
-- GitHub: [@yourusername](https://github.com/Sachin-Patkari)
+- GitHub: [@Sachin-Patkari](https://github.com/Sachin-Patkari)
 
 ---
-
-<div align="center">
-
-**⭐ Star this repo if you find it helpful!**
-
-</div>
