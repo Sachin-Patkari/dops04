@@ -177,9 +177,6 @@ terraform apply
 - OIDC provider for GitHub Actions
 - S3 bucket for monitoring configs
 
-**Screenshot:**
-![Alt Text](assets/terraform-apply.png)
-
 ### 4️⃣ Configure GitHub Secrets
 
 Add the following secrets to your GitHub repository:
@@ -209,6 +206,13 @@ GitHub Actions will automatically:
 5. Start monitoring stack
 
 ---
+
+**This is how the application will look like .**
+---
+Application UI:
+
+![Alt Text](assets/internship-homepage.png)
+
 
 ## 📊 Accessing Services
 
@@ -265,8 +269,11 @@ docker compose -f docker/docker-compose.prod.yml up --build
 - **OIDC Provider**: GitHub Actions authentication
 - **S3 Bucket**: Monitoring configuration storage
 
+**Screenshot:**
+![Alt Text](assets/terraform-apply.png)
 
-<details>
+
+
 <summary><b>Security Group Rules</b></summary>
 
 | Port | Service | Access |
@@ -281,11 +288,9 @@ docker compose -f docker/docker-compose.prod.yml up --build
 
 *Should be restricted to specific IPs in production
 
-</details>
 
 ### CI/CD Pipeline
 
-<details>
 <summary><b>Pipeline Stages</b></summary>
 
 1. **Authentication**: OIDC login to AWS (keyless)
@@ -295,11 +300,12 @@ docker compose -f docker/docker-compose.prod.yml up --build
 5. **Deploy Application**: SSM command to pull and restart containers
 6. **Deploy Monitoring**: Start Prometheus, Grafana, exporters
 
-</details>
+**Screenshot:**
+![Alt Text](assets/github-workflow.png)
+
 
 ### Monitoring Stack
 
-<details>
 <summary><b>Metrics Collection</b></summary>
 
 **Prometheus Targets:**
@@ -313,7 +319,25 @@ docker compose -f docker/docker-compose.prod.yml up --build
 - HTTP request rates and latency
 - Custom application metrics
 
-</details>
+**Screenshot:**
+![Alt Text](assets/grafana-nodejs-app.png)
+
+
+
+**Screenshot:**
+![Alt Text](assets/cadvisor-docker-dashboard.png)
+
+
+
+**Screenshot:**
+![Alt Text](assets/nodeport-pic.png)
+
+
+
+**Screenshot:**
+![Alt Text](assets/grafana-nodeexporter.png)
+
+
 
 ---
 
@@ -345,6 +369,11 @@ scrape_configs:
     static_configs:
       - targets: ['cadvisor:8080']
 ```
+
+
+**Screenshot:**
+![Alt Text](assets/prometheus-internship-pic.png)
+
 
 ---
 
