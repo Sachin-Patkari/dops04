@@ -255,7 +255,7 @@ docker compose -f docker/docker-compose.prod.yml up --build
 
 ### Infrastructure Details
 
-<details>
+
 <summary><b>Terraform Resources</b></summary>
 
 - **EC2 Instance**: Ubuntu 22.04 with automated Docker setup
@@ -265,7 +265,6 @@ docker compose -f docker/docker-compose.prod.yml up --build
 - **OIDC Provider**: GitHub Actions authentication
 - **S3 Bucket**: Monitoring configuration storage
 
-</details>
 
 <details>
 <summary><b>Security Group Rules</b></summary>
