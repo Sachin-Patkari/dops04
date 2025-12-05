@@ -177,6 +177,9 @@ terraform apply
 - OIDC provider for GitHub Actions
 - S3 bucket for monitoring configs
 
+**Screenshot:**
+![Alt Text](assets/terraform-apply.png)
+
 ### 4️⃣ Configure GitHub Secrets
 
 Add the following secrets to your GitHub repository:
